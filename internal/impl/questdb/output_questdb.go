@@ -154,7 +154,6 @@ func newQuestdbWriter(conf *service.ParsedConfig, mgr *service.Resources) (r *qu
 	r = &questdbWriter{
 		log: mgr.Logger(),
 		senderCtor: func(ctx context.Context) (qdb.LineSender, error) {
-			// todo: confstring from config
 			clientConfStr, err := conf.FieldString("client_conf_string")
 			if err != nil {
 				return nil, err
