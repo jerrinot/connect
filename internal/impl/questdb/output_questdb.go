@@ -15,23 +15,21 @@ const (
 
 func clientFields() []*service.ConfigField {
 	return []*service.ConfigField{
-		service.NewStringField("confstring").
+		service.NewStringField("client_conf_string").
 			Description("QuestDB client configuration string`").
-			Default("").
-			Example("http::addr=localhost;").
-			Advanced(),
+			Secret().
+			Example("http::addr=localhost;"),
 	}
 }
 
 func questdbOutputConfig() *service.ConfigSpec {
 	return service.NewConfigSpec().
-		Stable().
 		Summary(`Pushes messages a QuestDB table`).
 		Description(`The field `+"`key`"+` supports xref:configuration:interpolation.adoc#bloblang-queries[interpolation functions], allowing you to create a unique key for each message.`+service.OutputPerformanceDocs(true, true)).
 		Categories("Services").
 		Fields(clientFields()...).
 		Fields(
-			service.NewOutputMaxInFlightField(),
+			service.NewOutputMaxInFlightField().Default(75000),
 			service.NewBatchPolicyField(loFieldBatching),
 		)
 }
@@ -65,13 +63,11 @@ func (q *questdbWriter) WriteBatch(ctx context.Context, batch service.MessageBat
 		return service.ErrNotConnected
 	}
 	batchSize := len(batch)
-	q.log.Infof("Writing batch of size %v", batchSize)
 	for i := 0; i < batchSize; i++ {
-		q.log.Infof("Writing message %v", i)
+		q.log.Debugf("Writing message %v", i)
 
 		sender.Table("table")
 		msg := batch[i]
-		q.log.Infof("Message: %v", msg)
 
 		fields := map[string]any{}
 
@@ -80,8 +76,6 @@ func (q *questdbWriter) WriteBatch(ctx context.Context, batch service.MessageBat
 			q.log.Errorf("QuestDB error: %v\n", err)
 			return err
 		}
-
-		q.log.Infof("Fields: %v", fields)
 
 		for k, v := range fields {
 			switch val := v.(type) {
@@ -153,7 +147,11 @@ func newQuestdbWriter(conf *service.ParsedConfig, mgr *service.Resources) (r *qu
 		log: mgr.Logger(),
 		senderCtor: func(ctx context.Context) (qdb.LineSender, error) {
 			// todo: confstring from config
-			sender, err := qdb.LineSenderFromConf(ctx, "http::addr=localhost:9000;")
+			clientConfStr, err := conf.FieldString("client_conf_string")
+			if err != nil {
+				return nil, err
+			}
+			sender, err := qdb.LineSenderFromConf(ctx, clientConfStr)
 			return sender, err
 		},
 	}
