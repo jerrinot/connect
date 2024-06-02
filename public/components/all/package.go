@@ -42,6 +42,7 @@ import (
 	_ "github.com/redpanda-data/connect/v4/public/components/pure"
 	_ "github.com/redpanda-data/connect/v4/public/components/pure/extended"
 	_ "github.com/redpanda-data/connect/v4/public/components/pusher"
+	_ "github.com/redpanda-data/connect/v4/public/components/questdb"
 	_ "github.com/redpanda-data/connect/v4/public/components/redis"
 	_ "github.com/redpanda-data/connect/v4/public/components/sentry"
 	_ "github.com/redpanda-data/connect/v4/public/components/sftp"
