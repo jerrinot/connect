@@ -16,9 +16,12 @@ const (
 func clientFields() []*service.ConfigField {
 	return []*service.ConfigField{
 		service.NewStringField("client_conf_string").
-			Description("QuestDB client configuration string`").
+			Description("QuestDB client configuration string").
 			Secret().
 			Example("http::addr=localhost;"),
+		service.NewStringField("table").
+			Description("Destination table").
+			Example("trades"),
 	}
 }
 
@@ -42,6 +45,7 @@ type questdbWriter struct {
 	senderCtor func(ctx context.Context) (qdb.LineSender, error)
 	senderMut  sync.RWMutex
 	sender     qdb.LineSender
+	table      string
 }
 
 func (q *questdbWriter) Connect(ctx context.Context) error {
@@ -66,7 +70,7 @@ func (q *questdbWriter) WriteBatch(ctx context.Context, batch service.MessageBat
 	for i := 0; i < batchSize; i++ {
 		q.log.Debugf("Writing message %v", i)
 
-		sender.Table("table")
+		sender.Table(q.table)
 		msg := batch[i]
 
 		fields := map[string]any{}
@@ -143,6 +147,10 @@ func (q *questdbWriter) Close(ctx context.Context) error {
 }
 
 func newQuestdbWriter(conf *service.ParsedConfig, mgr *service.Resources) (r *questdbWriter, err error) {
+	table, err := conf.FieldString("table")
+	if err != nil {
+		return nil, err
+	}
 	r = &questdbWriter{
 		log: mgr.Logger(),
 		senderCtor: func(ctx context.Context) (qdb.LineSender, error) {
@@ -154,6 +162,7 @@ func newQuestdbWriter(conf *service.ParsedConfig, mgr *service.Resources) (r *qu
 			sender, err := qdb.LineSenderFromConf(ctx, clientConfStr)
 			return sender, err
 		},
+		table: table,
 	}
 
 	return r, nil
